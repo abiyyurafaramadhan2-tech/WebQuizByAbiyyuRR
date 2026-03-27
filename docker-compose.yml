@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chubbygenius_app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - APP_ENV=production
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-chubbygenius}
+      - DB_USERNAME=${DB_USERNAME:-chubby}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - storage_data:/var/www/html/storage
+    networks:
+      - chubby_net
+
+  db:
+    image: mysql:8.0
+    container_name: chubbygenius_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-chubbygenius}
+      MYSQL_USER: ${DB_USERNAME:-chubby}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootsecret}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+    networks:
+      - chubby_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: chubbygenius_redis
+    restart: unless-stopped
+    networks:
+      - chubby_net
+
+volumes:
+  mysql_data:
+  storage_data:
+
+networks:
+  chubby_net:
+    driver: bridge
